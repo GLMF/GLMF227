@@ -1,0 +1,76 @@
+#!/bin/bash
+
+set -euo pipefail
+
+readonly IP_LAPTOP='192.168.1.28'
+readonly DIRS=('/home/login/Rep')
+readonly EXCLUDE='NAS'
+readonly TARGET='/home/login'
+readonly WARNING_SOUND='/home/login/bin/data/transferToLaptop/warning.wav'
+readonly DONE_SOUND='/home/login/bin/data/transferToLaptop/done.wav'
+readonly RED='\033[0;31m'
+readonly NOCOLOR='\033[0m'
+
+
+usage() {
+    if [ "${1}" == "help" ]; then
+        echo 'Usage: transferToLaptop [action]'
+        echo "       Transfère les données de listDir sur le portable ${IP_LAPTOP}"
+        echo '       [action] :'
+        echo '           - listDir  : Liste des répertoires à synchroniser avec le portable'
+        echo "           - ipLaptop : Affichage de l'IP du portable"
+        exit 0
+    fi
+}
+
+warningTransfer() {
+    echo -e "${RED} /!\ Attention /!\ ${NOCOLOR}"
+    echo "Copie des fichiers de l'ordinateur fixe vers le portable (${IP_LAPTOP})!"
+    aplay -d 1 ${WARNING_SOUND} > /dev/null 2>&1
+read -p "Continuer? [o/N] : " confirm && [[ ${confirm} == [oO] || $confirm == [oO][eE][sS] ]] || exit 1
+}
+
+listDir() {
+    echo "Répertoires à synchroniser avec le portable :"
+    for directory in ${DIRS[@]}; do
+        echo "- ${directory}"
+    done
+    exit 0
+}
+
+ipLaptop() {
+    echo "IP du portable : ${IP_LAPTOP}"
+    exit 0
+}
+
+synchronize() {
+    local umountNAS=false
+    if [ "$(ls -A /home/login/NAS)" ]; then
+        echo 'Sécurité : on démonte le NAS'
+        sudo umount /home/login/NAS
+        umountNAS=true
+    fi
+    for directory in ${DIRS[@]}; do
+        directory=$(sed "s;\(${TARGET}\)/;\1/./;" <<< ${directory})
+        echo "Transfert de ${directory}"
+        rsync -aH --info=progress2 --delete --force ${directory} --exclude ${EXCLUDE} --relative login@${IP_LAPTOP}:${TARGET}
+    done
+    if [ "${umountNAS}" = "true" ]; then
+        echo 'Sécurité : on remonte le NAS'
+        sudo mount /home/login/NAS
+    fi
+    if [ "${?}" == "0" ]; then
+        aplay -d 1 ${DONE_SOUND} > /dev/null 2>&1
+    fi
+}
+
+if [ "${#}" == 0 ]; then
+    warningTransfer
+    synchronize
+elif [ "${1}" == 'listDir' ]; then
+    listDir
+elif [ "${1}" == 'ipLaptop' ]; then
+    ipLaptop
+else
+    usage 'help'
+fi

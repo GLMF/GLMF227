@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: foo
+  name: foo
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      run: foo
+  template:
+    metadata:
+      labels:
+        run: foo
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/arch: arm
+      containers:
+      - image: jblaskowich/hostinfo_arm
+        imagePullPolicy: Always
+        name: hostinfo

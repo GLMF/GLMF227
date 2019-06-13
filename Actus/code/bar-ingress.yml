@@ -1,0 +1,13 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  namespace: default
+  name: bar
+spec:
+  rules:
+  - host: bar.<YOUR IP>.xip.io
+    http:
+      paths:
+      - backend:
+          serviceName: bar
+          servicePort: 8080
